@@ -1,0 +1,24 @@
+{
+  "originHash" : "44e88c65532597d738243f1cc63903d601aae389aa4921ee0f61a4e5e5d6661f",
+  "pins" : [
+    {
+      "identity" : "async-http-client",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftuiux/async-http-client.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "014cac2c84b1c4a0e73f08d1dc469a2300beaeb1"
+      }
+    },
+    {
+      "identity" : "retry-policy-service",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftuiux/retry-policy-service.git",
+      "state" : {
+        "revision" : "2a6a1f057fbf77337dfc73db98bd3d538127b3e2",
+        "version" : "1.0.1"
+      }
+    }
+  ],
+  "version" : 3
+}

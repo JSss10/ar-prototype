@@ -1,0 +1,34 @@
+# --------------------
+# iOS / Xcode
+# --------------------
+
+# user-specific
+**/xcuserdata/
+**/*.xcuserstate
+**/*.xccheckout
+**/*.xcscmblueprint
+
+# build / caches
+DerivedData/
+**/DerivedData/
+build/
+**/.build/
+
+# xcode misc noise
+*.hmap
+*.moved-aside
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# artifacts
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# SwiftPM (falls später genutzt)
+.swiftpm/
