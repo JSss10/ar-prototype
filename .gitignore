@@ -2,6 +2,10 @@
 # iOS / Xcode
 # --------------------
 
+# macOS
+.DS_Store
+**/.DS_Store
+
 # user-specific
 **/xcuserdata/
 **/*.xcuserstate
@@ -11,7 +15,7 @@
 # build / caches
 DerivedData/
 **/DerivedData/
-build/
+ios/**/build/
 **/.build/
 
 # xcode misc noise
@@ -33,6 +37,6 @@ playground.xcworkspace
 # SwiftPM (falls später genutzt)
 .swiftpm/
 
-# Secrets
-*.xcconfig
-!*.example.xcconfig
+# Secrets (xcconfig)
+Secrets*.xcconfig
+!Secrets*.example.xcconfig
