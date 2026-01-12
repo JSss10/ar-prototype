@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		275713EC2F1504640073138F /* async-http-client in Frameworks */ = {isa = PBXBuildFile; productRef = 275713EB2F1504640073138F /* async-http-client */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		275713DC2F14FB480073138F /* ARLandmarks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ARLandmarks.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -40,7 +36,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				275713EC2F1504640073138F /* async-http-client in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,7 +78,6 @@
 			);
 			name = ARLandmarks;
 			packageProductDependencies = (
-				275713EB2F1504640073138F /* async-http-client */,
 			);
 			productName = ARLandmarks;
 			productReference = 275713DC2F14FB480073138F /* ARLandmarks.app */;
@@ -114,7 +108,6 @@
 			mainGroup = 275713D32F14FB480073138F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				275713EA2F1504640073138F /* XCRemoteSwiftPackageReference "async-http-client" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 275713DD2F14FB480073138F /* Products */;
@@ -364,25 +357,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		275713EA2F1504640073138F /* XCRemoteSwiftPackageReference "async-http-client" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/swiftuiux/async-http-client.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		275713EB2F1504640073138F /* async-http-client */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 275713EA2F1504640073138F /* XCRemoteSwiftPackageReference "async-http-client" */;
-			productName = "async-http-client";
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 275713D42F14FB480073138F /* Project object */;
 }
