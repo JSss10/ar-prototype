@@ -22,13 +22,13 @@ class LandmarkViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            async let landmarksTask = service.fetchLandmarks()
-            async let categoriesTask = service.fetchCategories()
-            
-            let (fetchedLandmarks, fetchedCategories) = try await (landmarksTask, categoriesTask)
+            let fetchedLandmarks = try await service.fetchLandmarks()
+            let fetchedCategories = try await service.fetchCategories()
             
             landmarks = fetchedLandmarks
             categories = fetchedCategories
+        } catch is CancellationError {
+            print("Task cancelled")
         } catch {
             errorMessage = error.localizedDescription
         }

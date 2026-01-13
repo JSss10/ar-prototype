@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Category: Codable, Identifiable, Sendable {
+struct Category: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let name: String
     let nameEn: String?
@@ -22,7 +22,7 @@ struct Category: Codable, Identifiable, Sendable {
     }
 }
 
-struct Landmark: Codable, Identifiable, Sendable {
+struct Landmark: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let name: String
     let nameEn: String?
