@@ -22,8 +22,9 @@ class LandmarkViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let fetchedLandmarks = try await service.fetchLandmarks()
-            let fetchedCategories = try await service.fetchCategories()
+            async let landmarksTask = service.fetchLandmarks()
+            async let categoriesTask = service.fetchCategories()
+            let (fetchedLandmarks, fetchedCategories) = try await (landmarksTask, categoriesTask)
             
             landmarks = fetchedLandmarks
             categories = fetchedCategories
