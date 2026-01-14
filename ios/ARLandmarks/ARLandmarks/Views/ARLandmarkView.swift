@@ -6,123 +6,218 @@
 //
 
 import SwiftUI
-import ARKit
 
 struct ARLandmarkView: View {
     let landmarks: [Landmark]
+    @StateObject private var modeManager = ARModeManager()
     @State private var selectedLandmark: Landmark?
-    @State private var showingDetail = false
-    @Environment(\.dismiss) private var dismiss
+    @State private var showingDetail: Bool = false
     
     var body: some View {
         ZStack {
-            ARViewContainer(landmarks: landmarks, selectedLandmark: $selectedLandmark)
-                .ignoresSafeArea()
+            ARViewContainer(
+                landmarks: displayedLandmarks,
+                selectedLandmark: $selectedLandmark,
+                modeManager: modeManager
+            )
+            .ignoresSafeArea()
             
             VStack {
-                headerView
+                topBar
                 
                 Spacer()
                 
-                if let landmark = selectedLandmark {
+                if let landmark = selectedLandmark ?? modeManager.recognizedLandmark {
                     landmarkInfoCard(landmark)
                 }
                 
-                trackingStatusView
+                modeSwitcher
             }
+            .padding()
         }
-        .onChange(of: selectedLandmark) {
-            showingDetail = selectedLandmark != nil
+        .onAppear {
+            modeManager.startSession()
+            modeManager.updateNearbyLandmarks(allLandmarks: landmarks)
+        }
+        .onDisappear {
+            modeManager.stopSession()
         }
         .sheet(isPresented: $showingDetail) {
             if let landmark = selectedLandmark {
-                LandmarkDetailSheet(landmark: landmark)
+                LandmarkDetailSheet(
+                    landmark: landmark,
+                    weather: modeManager.weather
+                )
             }
         }
     }
     
-    // MARK: - Subviews
+    // MARK: - Computed Properties
     
-    private var headerView: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(.white, .black.opacity(0.3))
+    private var displayedLandmarks: [Landmark] {
+        switch modeManager.currentMode {
+        case .visualRecognition:
+            if let recognized = modeManager.recognizedLandmark {
+                return [recognized]
             }
+            return []
+        case .geoBased:
+            return modeManager.nearbyLandmarks
+        }
+    }
+    
+    // MARK: - View Components
+    
+    private var topBar: some View {
+        HStack {
+            HStack(spacing: 8) {
+                Image(systemName: modeManager.currentMode.icon)
+                Text(modeManager.currentMode.rawValue)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
             
             Spacer()
             
-            Text("\(landmarks.count) Landmarks")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white)
+            if let weather = modeManager.weather {
+                HStack(spacing: 4) {
+                    Text(weather.iconEmoji)
+                    Text(weather.temperatureFormatted)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.black.opacity(0.3))
-                .clipShape(Capsule())
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(20)
+            }
+            
+            HStack(spacing: 4) {
+                Image(systemName: "building.2.fill")
+                Text("\(displayedLandmarks.count)")
+            }
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
         }
-        .padding()
     }
     
     private func landmarkInfoCard(_ landmark: Landmark) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(landmark.category?.icon ?? "📍")
-                    .font(.system(size: 24))
-                
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(landmark.name)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .font(.headline)
                     
                     if let category = landmark.category {
-                        Text(category.name)
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(hex: category.color))
+                        HStack(spacing: 4) {
+                            Text(category.icon ?? "📍")
+                            Text(category.name)
+                                .font(.subheadline)
+                                .foregroundColor(Color(hex: category.color))
+                        }
                     }
                 }
                 
                 Spacer()
                 
-                Button {
-                    showingDetail = true
-                } label: {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
+                if let distance = modeManager.locationService.distance(to: landmark) {
+                    Text(formatDistance(distance))
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.2))
+                        .cornerRadius(8)
                 }
             }
             
             if let description = landmark.description {
                 Text(description)
-                    .font(.system(size: 13))
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
+            
+            HStack(spacing: 16) {
+                if let year = landmark.yearBuilt {
+                    Label("\(year)", systemImage: "calendar")
+                        .font(.caption)
+                }
+                
+                if let architect = landmark.architect {
+                    Label(architect, systemImage: "person.fill")
+                        .font(.caption)
+                }
+            }
+            .foregroundColor(.secondary)
+            
+            Button {
+                selectedLandmark = landmark
+                showingDetail = true
+            } label: {
+                Text("Mehr erfahren")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
         }
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
     }
     
-    private var trackingStatusView: some View {
-        HStack {
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-            
-            Text("AR aktiv")
-                .font(.system(size: 12))
-                .foregroundColor(.white)
+    private var modeSwitcher: some View {
+        HStack(spacing: 12) {
+            ForEach(ARModeManager.ARMode.allCases, id: \.self) { mode in
+                Button {
+                    withAnimation {
+                        if mode == .visualRecognition {
+                            modeManager.switchToVisualMode()
+                        } else {
+                            modeManager.switchToGeoMode()
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: mode.icon)
+                        if modeManager.currentMode == mode {
+                            Text(mode.rawValue)
+                                .font(.caption)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(modeManager.currentMode == mode ? Color.blue : Color.clear)
+                    .foregroundColor(modeManager.currentMode == mode ? .white : .primary)
+                    .cornerRadius(20)
+                }
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(.black.opacity(0.5))
-        .clipShape(Capsule())
-        .padding(.bottom, 8)
+        .padding(4)
+        .background(.ultraThinMaterial)
+        .cornerRadius(24)
+    }
+    
+    // MARK: - Helpers
+    
+    private func formatDistance(_ meters: Double) -> String {
+        if meters < 1000 {
+            return "\(Int(meters)) m"
+        } else {
+            return String(format: "%.1f km", meters / 1000)
+        }
     }
 }
 
@@ -130,74 +225,61 @@ struct ARLandmarkView: View {
 
 struct LandmarkDetailSheet: View {
     let landmark: Landmark
+    let weather: Weather?
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 16) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(hex: landmark.category?.color ?? "#3B82F6").opacity(0.15))
-                                .frame(width: 64, height: 64)
-                            
-                            Text(landmark.category?.icon ?? "📍")
-                                .font(.system(size: 32))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(landmark.name)
-                                .font(.system(size: 22, weight: .bold))
-                            
-                            if let category = landmark.category {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let category = landmark.category {
+                            HStack {
+                                Text(category.icon ?? "📍")
                                 Text(category.name)
-                                    .font(.system(size: 15))
+                                    .font(.subheadline)
                                     .foregroundColor(Color(hex: category.color))
                             }
                         }
+                        
+                        Text(landmark.name)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
                     }
                     
-                    Divider()
+                    if let weather = weather {
+                        weatherCard(weather)
+                    }
                     
                     if let description = landmark.description {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Beschreibung")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            
+                                .font(.headline)
                             Text(description)
-                                .font(.system(size: 15))
+                                .foregroundColor(.secondary)
                         }
                     }
                     
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Details")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        
-                        if let year = landmark.yearBuilt {
-                            detailRow(icon: "calendar", title: "Baujahr", value: "\(year)")
-                        }
-                        
-                        if let architect = landmark.architect {
-                            detailRow(icon: "person", title: "Architekt", value: architect)
-                        }
-                        
-                        detailRow(
-                            icon: "location",
-                            title: "Koordinaten",
-                            value: String(format: "%.4f°N, %.4f°E", landmark.latitude, landmark.longitude)
-                        )
-                        
-                        if landmark.altitude > 0 {
-                            detailRow(icon: "arrow.up", title: "Höhe", value: "\(Int(landmark.altitude)) m")
+                    detailsGrid
+                    
+                    coordinatesCard
+                    
+                    if let url = landmark.wikipediaUrl, let wikipediaURL = URL(string: url) {
+                        Link(destination: wikipediaURL) {
+                            HStack {
+                                Image(systemName: "book.fill")
+                                Text("Wikipedia öffnen")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                            }
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(12)
                         }
                     }
                 }
                 .padding()
             }
-            .navigationTitle("Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -209,25 +291,101 @@ struct LandmarkDetailSheet: View {
         }
     }
     
-    private func detailRow(icon: String, title: String, value: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .frame(width: 20)
+    private func weatherCard(_ weather: Weather) -> some View {
+        HStack {
+            Text(weather.iconEmoji)
+                .font(.system(size: 40))
             
-            Text(title)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
+            VStack(alignment: .leading) {
+                Text(weather.temperatureFormatted)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Text(weather.description.capitalized)
+                    .foregroundColor(.secondary)
+            }
             
             Spacer()
             
-            Text(value)
-                .font(.system(size: 14, weight: .medium))
+            VStack(alignment: .trailing) {
+                Text("Gefühlt \(Int(weather.feelsLike))°")
+                Text("Luftfeuchtigkeit \(weather.humidity)%")
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(12)
+    }
+    
+    private var detailsGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ], spacing: 12) {
+            if let year = landmark.yearBuilt {
+                detailItem(icon: "calendar", title: "Baujahr", value: "\(year)")
+            }
+            
+            if let architect = landmark.architect {
+                detailItem(icon: "person.fill", title: "Architekt", value: architect)
+            }
+            
+            detailItem(icon: "arrow.up", title: "Höhe", value: "\(Int(landmark.altitude)) m ü.M.")
         }
     }
-}
-
-#Preview {
-    ARLandmarkView(landmarks: [])
+    
+    private func detailItem(icon: String, title: String, value: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+    }
+    
+    private var coordinatesCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Koordinaten")
+                .font(.headline)
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Latitude")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(String(format: "%.6f°", landmark.latitude))
+                        .font(.system(.body, design: .monospaced))
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .leading) {
+                    Text("Longitude")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(String(format: "%.6f°", landmark.longitude))
+                        .font(.system(.body, design: .monospaced))
+                }
+                
+                Spacer()
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
 }
