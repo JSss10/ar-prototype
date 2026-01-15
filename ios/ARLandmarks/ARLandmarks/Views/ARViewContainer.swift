@@ -154,44 +154,101 @@ struct ARViewContainer: UIViewRepresentable {
             let x = arDistance * Float(sin(bearing))
             let z = -arDistance * Float(cos(bearing))
 
-            // Height: very subtle altitude scaling, clamped to reasonable range
-            // Most POIs should appear at roughly eye level with small variations
-            let altitudeDiff = landmark.altitude - userLocation.altitude
-            let scaledHeight = Float(altitudeDiff / 500)  // Very gentle scaling
-            let y = max(-0.5, min(1.5, scaledHeight)) + 0.3  // Clamp between -0.2 and 1.8m
+            // Height: eye level
+            let y: Float = 0.0
 
             let position = SIMD3<Float>(x, y, z)
 
             let anchorEntity = AnchorEntity(world: position)
 
-            // Create sphere with category color - larger for better visibility
+            // Create Apple Maps-style balloon marker
+            let markerEntity = createBalloonMarker(for: landmark)
+            markerEntity.name = landmark.id
+            markerEntity.generateCollisionShapes(recursive: true)
+
+            anchorEntity.addChild(markerEntity)
+            arView.scene.addAnchor(anchorEntity)
+
+            print("📍 POI erstellt: \(landmark.name) at \(position) with ID \(landmark.id)")
+        }
+
+        private func createBalloonMarker(for landmark: Landmark) -> Entity {
+            let markerEntity = Entity()
             let color = UIColor(Color(hex: landmark.category?.color ?? "#3B82F6"))
-            let sphere = MeshResource.generateSphere(radius: 0.2)
-            let material = SimpleMaterial(color: color, roughness: 0.3, isMetallic: false)
-            let sphereEntity = ModelEntity(mesh: sphere, materials: [material])
 
-            // Use landmark.id as entity name for tap detection
-            sphereEntity.name = landmark.id
-            sphereEntity.generateCollisionShapes(recursive: false)
+            // Balloon body (circular top part)
+            let balloonRadius: Float = 0.12
+            let balloonMesh = MeshResource.generateSphere(radius: balloonRadius)
+            let balloonMaterial = SimpleMaterial(color: color, roughness: 0.3, isMetallic: false)
+            let balloonEntity = ModelEntity(mesh: balloonMesh, materials: [balloonMaterial])
+            balloonEntity.position = SIMD3<Float>(0, balloonRadius + 0.08, 0)
 
-            // Add text label - positioned above sphere
+            // Inner circle (white background for icon)
+            let innerRadius: Float = 0.08
+            let innerMesh = MeshResource.generateSphere(radius: innerRadius)
+            let innerMaterial = SimpleMaterial(color: .white, roughness: 0.5, isMetallic: false)
+            let innerEntity = ModelEntity(mesh: innerMesh, materials: [innerMaterial])
+            innerEntity.position = SIMD3<Float>(0, 0, balloonRadius * 0.6)
+            balloonEntity.addChild(innerEntity)
+
+            // Category icon as text
+            let iconText = landmark.category?.icon ?? "📍"
+            let iconMesh = MeshResource.generateText(
+                iconText,
+                extrusionDepth: 0.005,
+                font: .systemFont(ofSize: 0.06),
+                containerFrame: .zero,
+                alignment: .center,
+                lineBreakMode: .byClipping
+            )
+            let iconMaterial = SimpleMaterial(color: .black, isMetallic: false)
+            let iconEntity = ModelEntity(mesh: iconMesh, materials: [iconMaterial])
+            iconEntity.position = SIMD3<Float>(-0.025, -0.025, innerRadius * 0.9)
+            innerEntity.addChild(iconEntity)
+
+            // Pointer/tip at bottom (small cone shape using a thin box)
+            let pointerHeight: Float = 0.08
+            let pointerMesh = MeshResource.generateCone(height: pointerHeight, radius: 0.03)
+            let pointerMaterial = SimpleMaterial(color: color, roughness: 0.3, isMetallic: false)
+            let pointerEntity = ModelEntity(mesh: pointerMesh, materials: [pointerMaterial])
+            // Rotate cone to point downward and position below balloon
+            pointerEntity.orientation = simd_quatf(angle: .pi, axis: SIMD3<Float>(1, 0, 0))
+            pointerEntity.position = SIMD3<Float>(0, 0, 0)
+
+            // Text label below marker
             let textMesh = MeshResource.generateText(
                 landmark.name,
-                extrusionDepth: 0.01,
-                font: .systemFont(ofSize: 0.08, weight: .bold),
+                extrusionDepth: 0.008,
+                font: .systemFont(ofSize: 0.05, weight: .semibold),
                 containerFrame: .zero,
                 alignment: .center,
                 lineBreakMode: .byTruncatingTail
             )
             let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
             let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
-            textEntity.position = SIMD3<Float>(0, 0.35, 0)
 
-            anchorEntity.addChild(sphereEntity)
-            anchorEntity.addChild(textEntity)
-            arView.scene.addAnchor(anchorEntity)
+            // Calculate text width for centering
+            let textBounds = textMesh.bounds
+            let textWidth = textBounds.max.x - textBounds.min.x
+            textEntity.position = SIMD3<Float>(-textWidth / 2, -0.15, 0)
 
-            print("🔵 POI erstellt: \(landmark.name) at \(position) with ID \(landmark.id)")
+            // Add shadow/background for text readability
+            let bgMesh = MeshResource.generateBox(
+                width: textWidth + 0.04,
+                height: 0.07,
+                depth: 0.005,
+                cornerRadius: 0.02
+            )
+            let bgMaterial = SimpleMaterial(color: UIColor.black.withAlphaComponent(0.6), roughness: 1.0, isMetallic: false)
+            let bgEntity = ModelEntity(mesh: bgMesh, materials: [bgMaterial])
+            bgEntity.position = SIMD3<Float>(0, -0.12, -0.01)
+
+            markerEntity.addChild(balloonEntity)
+            markerEntity.addChild(pointerEntity)
+            markerEntity.addChild(bgEntity)
+            markerEntity.addChild(textEntity)
+
+            return markerEntity
         }
 
         private func calculateBearing(from: CLLocation, to: CLLocation) -> Double {
