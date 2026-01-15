@@ -11,9 +11,6 @@ import simd
 struct ARPositionCalculator {
     
     /// Berechnet AR-Position relativ zum Benutzer
-    /// - landmark: Ziel-Landmark
-    /// - userLocation: Aktuelle GPS-Position
-    /// - userHeading: Aktuelle Kompass-Richtung (in Grad, 0 = Nord)
     static func calculatePosition(
         for landmark: Landmark,
         userLocation: CLLocation,
@@ -33,39 +30,35 @@ struct ARPositionCalculator {
         // Relative Richtung (berücksichtigt wohin User schaut)
         let relativeBearing = (bearing - userHeading).toRadians
         
-        // AR verwendet: +X = rechts, +Y = oben, -Z = vorwärts
-        // Skalierung: 1 Meter GPS = 1 Meter AR (für nahe Objekte)
-        // Für weite Distanzen: logarithmische Skalierung
-        let scaledDistance = scaleDistance(distance)
+        // Komprimiert echte Distanzen auf AR-Distanzen
+        let arDistance = scaleDistanceForAR(distance)
         
-        let x = Float(scaledDistance * sin(relativeBearing))
-        let z = Float(-scaledDistance * cos(relativeBearing))
+        // AR-Koordinaten
+        let x = Float(arDistance * sin(relativeBearing))
+        let z = Float(-arDistance * cos(relativeBearing))
         
-        // Höhendifferenz
-        let y = Float(landmark.altitude - userLocation.altitude)
+        let altitudeDiff = landmark.altitude - userLocation.altitude
+        let scaledHeight = Float(altitudeDiff / 500)
+        let y = max(-0.5, min(1.5, scaledHeight)) + 0.3
         
         return SIMD3<Float>(x, y, z)
     }
     
-    /// Skaliert Distanz für bessere AR-Darstellung
-    private static func scaleDistance(_ meters: Double) -> Double {
-        let maxARDistance: Double = 50 // in Metern
-        
-        if meters <= maxARDistance {
-            return meters
+    /// Skaliert echte Distanz auf AR-Distanz
+    private static func scaleDistanceForAR(_ meters: Double) -> Double {
+        if meters < 100 {
+            // Nah (0-100m): 2-3m in AR
+            return 2.0 + (meters / 100.0) * 1.0
+        } else if meters < 500 {
+            // Mittel (100-500m): 3-4.5m in AR
+            return 3.0 + ((meters - 100) / 400.0) * 1.5
+        } else {
+            // Weit (500m+): 4.5-6m in AR (max 6m)
+            return 4.5 + min((meters - 500) / 1500.0 * 1.5, 1.5)
         }
-        
-        // Logarithmische Skalierung für weite Distanzen
-        let factor: Double = 10
-        return maxARDistance + log(meters - maxARDistance + 1) * factor
     }
     
     /// Berechnet ob ein Landmark im Sichtfeld ist
-    /// - Parameters:
-    ///   - landmark: Das Landmark
-    ///   - userLocation: Benutzer-Position
-    ///   - userHeading: Blickrichtung
-    ///   - fieldOfView: Sichtfeld in Grad (Standard: 60°)
     static func isInFieldOfView(
         landmark: Landmark,
         userLocation: CLLocation,
