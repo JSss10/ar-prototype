@@ -31,9 +31,6 @@ struct ARLandmarkView: View {
                 trackingStatusView
             }
         }
-        .onChange(of: selectedLandmark) {
-            showingDetail = selectedLandmark != nil
-        }
         .sheet(isPresented: $showingDetail) {
             if let landmark = selectedLandmark {
                 LandmarkDetailSheet(landmark: landmark)
@@ -68,33 +65,40 @@ struct ARLandmarkView: View {
     
     private func landmarkInfoCard(_ landmark: Landmark) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(landmark.category?.icon ?? "📍")
-                    .font(.system(size: 24))
-                
+            HStack(spacing: 12) {
+                // Icon with colored background
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(hex: landmark.category?.color ?? "#3B82F6").opacity(0.15))
+                        .frame(width: 48, height: 48)
+
+                    Text(landmark.category?.icon ?? "📍")
+                        .font(.system(size: 24))
+                }
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(landmark.name)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
-                    
+
                     if let category = landmark.category {
                         Text(category.name)
                             .font(.system(size: 13))
                             .foregroundColor(Color(hex: category.color))
                     }
                 }
-                
+
                 Spacer()
-                
+
                 Button {
                     showingDetail = true
                 } label: {
                     Image(systemName: "info.circle.fill")
-                        .font(.system(size: 24))
+                        .font(.system(size: 28))
                         .foregroundColor(.blue)
                 }
             }
-            
+
             if let description = landmark.description {
                 Text(description)
                     .font(.system(size: 13))
@@ -105,7 +109,8 @@ struct ARLandmarkView: View {
         .padding()
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding()
+        .padding(.horizontal)
+        .padding(.bottom, 4)
     }
     
     private var trackingStatusView: some View {
