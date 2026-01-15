@@ -12,23 +12,24 @@ struct ARLandmarkView: View {
     let landmarks: [Landmark]
     @State private var selectedLandmark: Landmark?
     @State private var showingDetail = false
+    @State private var isGeoMode = true
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         ZStack {
             ARViewContainer(landmarks: landmarks, selectedLandmark: $selectedLandmark)
                 .ignoresSafeArea()
-            
+
             VStack {
                 headerView
-                
+
                 Spacer()
-                
+
                 if let landmark = selectedLandmark {
                     landmarkInfoCard(landmark)
                 }
-                
-                trackingStatusView
+
+                modeSwitcher
             }
         }
         .sheet(isPresented: $showingDetail) {
@@ -37,30 +38,102 @@ struct ARLandmarkView: View {
             }
         }
     }
-    
+
     // MARK: - Subviews
-    
+
     private var headerView: some View {
-        HStack {
+        HStack(spacing: 8) {
+            // Geo-basierte POIs pill
+            HStack(spacing: 6) {
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.green)
+
+                Text("Geo-basierte POIs")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+
+            Spacer()
+
+            // Weather info
+            HStack(spacing: 4) {
+                Text("☀️")
+                    .font(.system(size: 14))
+                Text("10°C")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+
+            // Landmarks count
+            HStack(spacing: 4) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.red)
+                Text("\(landmarks.count)")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+
+            // Close button
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(.white, .black.opacity(0.3))
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white, .black.opacity(0.5))
             }
-            
-            Spacer()
-            
-            Text("\(landmarks.count) Landmarks")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.black.opacity(0.3))
-                .clipShape(Capsule())
         }
         .padding()
+    }
+
+    private var modeSwitcher: some View {
+        HStack(spacing: 0) {
+            // Vision mode button
+            Button {
+                isGeoMode = false
+            } label: {
+                Image(systemName: "eye")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(isGeoMode ? .primary : .white)
+                    .frame(width: 44, height: 36)
+                    .background(isGeoMode ? Color.clear : Color.blue)
+                    .clipShape(Capsule())
+            }
+
+            // Geo mode button
+            Button {
+                isGeoMode = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.north.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Geo-basierte POIs")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(isGeoMode ? .white : .primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(isGeoMode ? Color.blue : Color.clear)
+                .clipShape(Capsule())
+            }
+        }
+        .padding(4)
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .padding(.bottom, 8)
     }
     
     private func landmarkInfoCard(_ landmark: Landmark) -> some View {
@@ -113,22 +186,6 @@ struct ARLandmarkView: View {
         .padding(.bottom, 4)
     }
     
-    private var trackingStatusView: some View {
-        HStack {
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-            
-            Text("AR aktiv")
-                .font(.system(size: 12))
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(.black.opacity(0.5))
-        .clipShape(Capsule())
-        .padding(.bottom, 8)
-    }
 }
 
 // MARK: - Landmark Detail Sheet

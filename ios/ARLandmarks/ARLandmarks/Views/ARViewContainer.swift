@@ -138,24 +138,35 @@ struct ARViewContainer: UIViewRepresentable {
             let distance = userLocation.distance(from: landmarkLocation)
             let bearing = calculateBearing(from: userLocation, to: landmarkLocation)
 
-            // Scale distance for AR visualization (max 10m in AR space)
-            let arDistance = min(Float(distance / 100), 10.0)
+            // Scale distance for AR visualization
+            // Closer POIs (< 500m): place at 2-4m in AR
+            // Far POIs (> 500m): place at 4-6m in AR
+            let arDistance: Float
+            if distance < 100 {
+                arDistance = 2.0 + Float(distance / 100) * 1.0  // 2-3m
+            } else if distance < 500 {
+                arDistance = 3.0 + Float((distance - 100) / 400) * 1.5  // 3-4.5m
+            } else {
+                arDistance = 4.5 + min(Float((distance - 500) / 1500) * 1.5, 1.5)  // 4.5-6m
+            }
 
             // Calculate AR position using bearing
             let x = arDistance * Float(sin(bearing))
             let z = -arDistance * Float(cos(bearing))
 
-            // Height based on altitude difference or default
+            // Height: very subtle altitude scaling, clamped to reasonable range
+            // Most POIs should appear at roughly eye level with small variations
             let altitudeDiff = landmark.altitude - userLocation.altitude
-            let y = Float(altitudeDiff / 50) + 0.5
+            let scaledHeight = Float(altitudeDiff / 500)  // Very gentle scaling
+            let y = max(-0.5, min(1.5, scaledHeight)) + 0.3  // Clamp between -0.2 and 1.8m
 
             let position = SIMD3<Float>(x, y, z)
 
             let anchorEntity = AnchorEntity(world: position)
 
-            // Create sphere with category color
+            // Create sphere with category color - larger for better visibility
             let color = UIColor(Color(hex: landmark.category?.color ?? "#3B82F6"))
-            let sphere = MeshResource.generateSphere(radius: 0.15)
+            let sphere = MeshResource.generateSphere(radius: 0.2)
             let material = SimpleMaterial(color: color, roughness: 0.3, isMetallic: false)
             let sphereEntity = ModelEntity(mesh: sphere, materials: [material])
 
@@ -163,18 +174,18 @@ struct ARViewContainer: UIViewRepresentable {
             sphereEntity.name = landmark.id
             sphereEntity.generateCollisionShapes(recursive: false)
 
-            // Add text label
+            // Add text label - positioned above sphere
             let textMesh = MeshResource.generateText(
                 landmark.name,
                 extrusionDepth: 0.01,
-                font: .systemFont(ofSize: 0.06, weight: .bold),
+                font: .systemFont(ofSize: 0.08, weight: .bold),
                 containerFrame: .zero,
                 alignment: .center,
                 lineBreakMode: .byTruncatingTail
             )
             let textMaterial = SimpleMaterial(color: .white, isMetallic: false)
             let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
-            textEntity.position = SIMD3<Float>(0, 0.25, 0)
+            textEntity.position = SIMD3<Float>(0, 0.35, 0)
 
             anchorEntity.addChild(sphereEntity)
             anchorEntity.addChild(textEntity)
